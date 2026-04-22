@@ -75,9 +75,9 @@ export function DataSourceModal() {
   };
 
   const TABS: { id: Tab; icon: React.ReactNode; label: string }[] = [
-    { id: "upload", icon: <Upload size={14} />, label: "Upload File" },
-    { id: "url", icon: <Link2 size={14} />, label: "From URL" },
-    { id: "paste", icon: <ClipboardPaste size={14} />, label: "Paste Data" },
+    { id: "upload", icon: <Upload size={13} />, label: "Upload File" },
+    { id: "url", icon: <Link2 size={13} />, label: "From URL" },
+    { id: "paste", icon: <ClipboardPaste size={13} />, label: "Paste Data" },
   ];
 
   const FILE_TYPES = ["CSV", "TSV", "Excel", "JSON", "Parquet", "SQLite"];
@@ -86,34 +86,68 @@ export function DataSourceModal() {
     <AnimatePresence>
       {dataSourceOpen && (
         <>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm" onClick={toggleDataSource} />
+          {/* Backdrop */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 20 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40"
+            style={{ background: "rgba(13,13,26,0.35)", backdropFilter: "blur(4px)" }}
+            onClick={toggleDataSource}
+          />
+
+          {/* Modal */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 16 }}
             transition={{ type: "spring", stiffness: 400, damping: 35 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md glass-bright rounded-2xl p-6 shadow-2xl"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md p-6"
+            style={{
+              background: "rgba(255,255,255,0.99)",
+              borderRadius: 24,
+              border: "1px solid var(--border)",
+              boxShadow: "0 24px 80px rgba(99,102,241,0.12), 0 4px 16px rgba(0,0,0,0.06)",
+            }}
           >
+            {/* Header */}
             <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                  <Database size={15} className="text-blue-400" />
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+                  style={{ background: "linear-gradient(135deg, rgba(99,102,241,0.12), rgba(6,182,212,0.10))", border: "1px solid rgba(99,102,241,0.18)" }}>
+                  <Database size={16} style={{ color: "var(--indigo)" }} />
                 </div>
-                <h2 className="text-sm font-semibold text-white/90">Connect Data Source</h2>
+                <div>
+                  <h2 className="text-sm font-semibold" style={{ color: "var(--text-1)" }}>Connect Data Source</h2>
+                  <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>Upload, fetch, or paste your data</p>
+                </div>
               </div>
-              <button onClick={toggleDataSource} className="text-white/30 hover:text-white/70 transition-colors"><X size={16} /></button>
+              <button
+                onClick={toggleDataSource}
+                className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+                style={{ color: "var(--text-3)", background: "rgba(99,102,241,0.04)" }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(99,102,241,0.09)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(99,102,241,0.04)"; }}
+              >
+                <X size={14} />
+              </button>
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-1 mb-5 p-1 rounded-lg bg-white/[0.04]">
+            <div className="flex gap-1 mb-5 p-1 rounded-xl" style={{ background: "rgba(99,102,241,0.05)", border: "1px solid var(--border)" }}>
               {TABS.map((t) => (
-                <button key={t.id} onClick={() => setTab(t.id)}
-                  className={cn("flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition-all",
-                    tab === t.id ? "bg-blue-600 text-white" : "text-white/50 hover:text-white/70")}>
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  className={cn("flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all")}
+                  style={tab === t.id
+                    ? { background: "white", color: "var(--indigo)", boxShadow: "0 1px 4px rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.14)" }
+                    : { color: "var(--text-3)", background: "transparent", border: "1px solid transparent" }}
+                >
                   {t.icon} {t.label}
                 </button>
               ))}
             </div>
 
+            {/* Upload */}
             {tab === "upload" && (
               <div>
                 <div
@@ -121,52 +155,60 @@ export function DataSourceModal() {
                   onDragLeave={() => setDragging(false)}
                   onDrop={handleDrop}
                   onClick={() => document.getElementById("file-input")?.click()}
-                  className={cn(
-                    "border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all",
-                    dragging ? "border-blue-500 bg-blue-500/10" : "border-white/10 hover:border-white/20 hover:bg-white/[0.02]",
-                    loaded && "border-green-500 bg-green-500/10",
-                  )}
+                  className="rounded-2xl p-8 text-center cursor-pointer transition-all"
+                  style={{
+                    border: `2px dashed ${loaded ? "#10b981" : dragging ? "var(--indigo)" : "rgba(99,102,241,0.2)"}`,
+                    background: loaded
+                      ? "rgba(16,185,129,0.05)"
+                      : dragging
+                      ? "rgba(99,102,241,0.05)"
+                      : "rgba(99,102,241,0.02)",
+                  }}
                 >
                   {loaded ? (
                     <div className="flex flex-col items-center gap-2">
-                      <CheckCircle size={32} className="text-green-400" />
-                      <p className="text-sm text-green-400 font-medium">Data loaded!</p>
+                      <CheckCircle size={32} style={{ color: "#10b981" }} />
+                      <p className="text-sm font-semibold" style={{ color: "#059669" }}>Data loaded!</p>
                     </div>
                   ) : loading ? (
                     <div className="flex flex-col items-center gap-2">
-                      <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                      <p className="text-sm text-white/50">Processing…</p>
+                      <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: "var(--indigo)", borderTopColor: "transparent" }} />
+                      <p className="text-sm" style={{ color: "var(--text-3)" }}>Processing…</p>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-white/[0.06] flex items-center justify-center">
-                        <FileText size={22} className="text-white/40" />
+                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                        style={{ background: "linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.08))", border: "1px solid rgba(99,102,241,0.15)" }}>
+                        <FileText size={22} style={{ color: "var(--indigo)" }} />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-white/70">Drop file here or click to browse</p>
-                        <p className="text-xs text-white/30 mt-1">{FILE_TYPES.join(" · ")}</p>
+                        <p className="text-sm font-medium" style={{ color: "var(--text-2)" }}>Drop file here or click to browse</p>
+                        <p className="mt-1" style={{ fontSize: 11, color: "var(--text-3)" }}>{FILE_TYPES.join(" · ")}</p>
                       </div>
                     </div>
                   )}
-                  <input id="file-input" type="file" className="hidden"
+                  <input
+                    id="file-input"
+                    type="file"
+                    className="hidden"
                     accept=".csv,.tsv,.txt,.xlsx,.xls,.json,.parquet,.db,.sqlite,.sqlite3"
-                    onChange={(e) => e.target.files?.[0] && processFile(e.target.files[0])} />
+                    onChange={(e) => e.target.files?.[0] && processFile(e.target.files[0])}
+                  />
                 </div>
               </div>
             )}
 
+            {/* URL */}
             {tab === "url" && (
               <div className="space-y-3">
                 <div>
                   <label className="label">Data URL</label>
-                  <input value={url} onChange={(e) => setUrl(e.target.value)}
-                    className="input w-full" placeholder="https://example.com/data.csv" />
-                  <p className="text-[10px] text-white/30 mt-1">Supports CSV, JSON, Parquet URLs</p>
+                  <input value={url} onChange={(e) => setUrl(e.target.value)} className="input w-full" placeholder="https://example.com/data.csv" />
+                  <p className="mt-1" style={{ fontSize: 10, color: "var(--text-3)" }}>Supports CSV, JSON, and Parquet URLs</p>
                 </div>
                 <div>
-                  <label className="label">Table Name</label>
-                  <input value={urlName} onChange={(e) => setUrlName(e.target.value)}
-                    className="input w-full" placeholder="my_data" />
+                  <label className="label">Table Name (optional)</label>
+                  <input value={urlName} onChange={(e) => setUrlName(e.target.value)} className="input w-full" placeholder="my_data" />
                 </div>
                 <button onClick={handleURL} disabled={!url || loading} className="btn-primary w-full">
                   {loading ? "Loading…" : "Load Data"}
@@ -174,13 +216,19 @@ export function DataSourceModal() {
               </div>
             )}
 
+            {/* Paste */}
             {tab === "paste" && (
               <div className="space-y-3">
                 <div>
                   <label className="label">Paste CSV / TSV data</label>
-                  <textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)}
-                    rows={7} className="input w-full resize-none font-mono text-[11px]"
-                    placeholder={"name,value,category\nAlpha,42,A\nBeta,87,B"} />
+                  <textarea
+                    value={pasteText}
+                    onChange={(e) => setPasteText(e.target.value)}
+                    rows={7}
+                    className="input w-full resize-none font-mono"
+                    style={{ fontSize: 11 }}
+                    placeholder={"name,value,category\nAlpha,42,A\nBeta,87,B"}
+                  />
                 </div>
                 <button onClick={handlePaste} disabled={!pasteText.trim() || loading} className="btn-primary w-full">
                   {loading ? "Parsing…" : "Load Data"}

@@ -4,12 +4,25 @@ import type { Widget } from "@/types";
 export function InsightWidget({ widget }: { widget: Widget }) {
   return (
     <div className="h-full flex gap-3 p-1">
-      <div className="w-7 h-7 rounded-lg bg-amber-500/15 flex items-center justify-center shrink-0 mt-0.5">
-        <Lightbulb size={13} className="text-amber-400" />
+      <div
+        className="shrink-0 mt-0.5 w-8 h-8 rounded-xl flex items-center justify-center"
+        style={{ background: "linear-gradient(135deg, rgba(245,158,11,0.15), rgba(236,72,153,0.10))", border: "1px solid rgba(245,158,11,0.2)" }}
+      >
+        <Lightbulb size={14} style={{ color: "#d97706" }} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-amber-400/60 mb-1.5">Insight</p>
-        <p className="text-xs text-white/70 leading-relaxed">{widget.insight ?? "No insight generated."}</p>
+        <p
+          className="font-semibold uppercase tracking-widest mb-1.5"
+          style={{ fontSize: 9, color: "#d97706", letterSpacing: "0.1em" }}
+        >
+          Insight
+        </p>
+        <p
+          className="leading-relaxed"
+          style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.65 }}
+        >
+          {widget.insight ?? "No insight generated."}
+        </p>
       </div>
     </div>
   );

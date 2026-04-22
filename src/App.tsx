@@ -21,11 +21,11 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ background: "var(--bg-base)" }}>
-      {/* Ambient background */}
+      {/* Soft ambient orbs */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-blue-600/5 blur-[120px]" />
-        <div className="absolute bottom-1/3 right-1/4 w-80 h-80 rounded-full bg-purple-600/5 blur-[100px]" />
-        <div className="absolute top-2/3 left-1/2 w-64 h-64 rounded-full bg-cyan-600/4 blur-[80px]" />
+        <div className="absolute -top-32 -left-32 w-[600px] h-[600px] rounded-full opacity-30" style={{ background: "radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)" }} />
+        <div className="absolute -bottom-40 -right-20 w-[500px] h-[500px] rounded-full opacity-25" style={{ background: "radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)" }} />
+        <div className="absolute top-1/2 left-1/2 w-[400px] h-[400px] rounded-full opacity-20" style={{ background: "radial-gradient(circle, rgba(6,182,212,0.1) 0%, transparent 70%)" }} />
       </div>
 
       <Navbar />

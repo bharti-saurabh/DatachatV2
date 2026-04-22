@@ -7,9 +7,9 @@ import { cn } from "@/lib/utils";
 
 const EXAMPLE_PROMPTS = [
   "Build me an executive overview of this data",
-  "Show me the top trends and key metrics",
-  "Create a sales performance dashboard",
-  "Analyse distributions and outliers",
+  "Show key trends and metrics",
+  "Analyse distributions and top performers",
+  "Create a summary dashboard",
 ];
 
 export function PromptBar() {
@@ -23,19 +23,12 @@ export function PromptBar() {
     if (!q || isBuilding || !dataReady) return;
     setInput("");
     setIsBuilding(true);
-
     try {
       const { title, widgets: newWidgets } = await buildDashboard(q, schemas, llmSettings, widgets);
       setDashboardTitle(title);
-      // Add new widgets to existing ones (or replace if first build)
       const finalWidgets = widgets.length === 0 ? newWidgets : [...widgets, ...newWidgets];
       setWidgets(finalWidgets);
-
-      // Execute each widget's SQL in parallel
-      const withData = await Promise.all(
-        newWidgets.map((w) => executeWidget(w))
-      );
-      // Update only the new widgets with their data
+      const withData = await Promise.all(newWidgets.map((w) => executeWidget(w)));
       withData.forEach((w) => updateWidget(w.id, { data: w.data, loading: false, error: w.error }));
     } catch (e) {
       addToast({ variant: "error", title: "Build failed", message: String(e) });
@@ -51,20 +44,24 @@ export function PromptBar() {
   return (
     <div className="shrink-0 px-4 pb-4 pt-2">
       <motion.div
-        animate={{ boxShadow: focused ? "0 0 0 1px rgba(59,130,246,0.4), 0 0 40px rgba(59,130,246,0.1)" : "0 0 0 1px rgba(255,255,255,0.08)" }}
-        className="rounded-2xl overflow-hidden"
-        style={{ background: "rgba(255,255,255,0.04)", backdropFilter: "blur(20px)" }}
+        animate={{
+          boxShadow: focused
+            ? "0 0 0 2px rgba(99,102,241,0.3), 0 8px 40px rgba(99,102,241,0.12)"
+            : "0 2px 12px rgba(99,102,241,0.06), 0 0 0 1px rgba(99,102,241,0.1)",
+        }}
+        className="rounded-2xl overflow-hidden bg-white"
       >
         {/* Example prompts */}
         <AnimatePresence>
           {focused && !input && !isBuilding && (
             <motion.div
               initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-              className="px-3 pt-3 flex flex-wrap gap-1.5"
+              className="px-4 pt-3 flex flex-wrap gap-1.5"
             >
               {EXAMPLE_PROMPTS.map((p) => (
                 <button key={p} onClick={() => { setInput(p); textareaRef.current?.focus(); }}
-                  className="text-[11px] px-2.5 py-1 rounded-full border border-white/10 text-white/40 hover:text-white/70 hover:border-white/20 transition-all">
+                  className="text-[11px] px-3 py-1 rounded-full border font-medium transition-all hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50"
+                  style={{ borderColor: "var(--border)", color: "var(--text-3)" }}>
                   {p}
                 </button>
               ))}
@@ -73,8 +70,9 @@ export function PromptBar() {
         </AnimatePresence>
 
         <div className="flex items-end gap-3 px-4 py-3">
-          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500/30 to-purple-500/30 flex items-center justify-center shrink-0 mb-0.5">
-            <Wand2 size={12} className="text-blue-400" />
+          <div className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 mb-0.5"
+            style={{ background: "linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))" }}>
+            <Wand2 size={13} style={{ color: "var(--indigo)" }} />
           </div>
 
           <textarea
@@ -85,10 +83,10 @@ export function PromptBar() {
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             disabled={isBuilding || !dataReady}
-            placeholder={!dataReady ? "Connect a data source first…" : "Describe the dashboard you want to build… (⌘+Enter)"}
+            placeholder={!dataReady ? "Connect a data source first…" : "Describe the dashboard you want to build… (⌘+Enter to send)"}
             rows={1}
-            className="flex-1 bg-transparent resize-none text-sm text-white/90 placeholder:text-white/25 focus:outline-none leading-relaxed"
-            style={{ maxHeight: 120, overflowY: "auto" }}
+            className="flex-1 bg-transparent resize-none text-sm focus:outline-none leading-relaxed"
+            style={{ color: "var(--text-1)", maxHeight: 120, overflowY: "auto" }}
           />
 
           <button
@@ -97,20 +95,21 @@ export function PromptBar() {
             className={cn(
               "shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all mb-0.5",
               input.trim() && !isBuilding && dataReady
-                ? "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25"
-                : "bg-white/[0.06] text-white/20 cursor-not-allowed",
+                ? "text-white shadow-lg"
+                : "cursor-not-allowed opacity-30",
             )}
+            style={input.trim() && !isBuilding && dataReady
+              ? { background: "linear-gradient(135deg, #6366f1, #8b5cf6)", boxShadow: "0 4px 14px rgba(99,102,241,0.35)" }
+              : { background: "#e5e7eb" }}
           >
             {isBuilding ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
           </button>
         </div>
 
         {isBuilding && (
-          <div className="px-4 pb-3">
-            <div className="flex items-center gap-2 text-[11px] text-blue-400/80">
-              <Sparkles size={10} className="animate-pulse" />
-              Building your dashboard…
-            </div>
+          <div className="px-4 pb-3 flex items-center gap-2 text-[11px] font-medium" style={{ color: "var(--indigo)" }}>
+            <Sparkles size={10} className="animate-pulse" />
+            Building your dashboard…
           </div>
         )}
       </motion.div>
