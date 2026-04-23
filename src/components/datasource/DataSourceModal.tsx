@@ -1,11 +1,22 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Upload, Link2, ClipboardPaste, FileText, Database, CheckCircle } from "lucide-react";
+import { X, Upload, Link2, ClipboardPaste, FileText, Database, CheckCircle, Layers, Loader2 } from "lucide-react";
 import { useDashboardStore } from "@/store/useDashboardStore";
 import { loadFile, loadURL, pasteData } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
-type Tab = "upload" | "url" | "paste";
+type Tab = "upload" | "url" | "paste" | "samples";
+
+const SAMPLES = [
+  { title: "World", body: "239 countries and their cities — population, language, geography.", url: "https://raw.githubusercontent.com/gramener/datasets/main/world.db" },
+  { title: "NBA", body: "Basketball match stats — players, teams, rebounds, assists.", url: "https://raw.githubusercontent.com/gramener/datasets/main/nba.db" },
+  { title: "CraftBeer", body: "Craft beers by style, ABV, IBU, and brewery by state.", url: "https://raw.githubusercontent.com/gramener/datasets/main/craftbeer.db" },
+  { title: "Atherosclerosis", body: "20-year longitudinal study — demographics, blood pressure, cholesterol.", url: "https://raw.githubusercontent.com/gramener/datasets/main/atherosclerosis.db" },
+  { title: "Card Transactions", body: "Card transaction data — amounts, channels, fraud flags, decline codes.", url: "https://raw.githubusercontent.com/gramener/datasets/main/card_transactions.csv" },
+  { title: "HR: Employee Data", body: "Employee master — salary, department, performance, gender, hire date.", url: "https://raw.githubusercontent.com/gramener/datasets/main/employee_data.csv" },
+  { title: "Marvel Powers", body: "Every Marvel character's powers at weakest and strongest from Marvel Fandom.", url: "https://raw.githubusercontent.com/sanand0/marvel-powers/master/marvel-powers-summary.csv" },
+  { title: "EHR Data", body: "Electronic health records — demographics, comorbidities, medications, visits.", url: "https://raw.githubusercontent.com/gramener/datasets/refs/heads/main/ehr.csv" },
+];
 
 export function DataSourceModal() {
   const { dataSourceOpen, toggleDataSource, setSchemas, setDataReady, addToast } = useDashboardStore();
@@ -16,6 +27,7 @@ export function DataSourceModal() {
   const [urlName, setUrlName] = useState("");
   const [pasteText, setPasteText] = useState("");
   const [loaded, setLoaded] = useState(false);
+  const [loadingSample, setLoadingSample] = useState<string | null>(null);
 
   const processFile = async (file: File) => {
     setLoading(true);
@@ -74,10 +86,34 @@ export function DataSourceModal() {
     }
   };
 
+  const handleSample = async (url: string, title: string) => {
+    setLoadingSample(title);
+    setLoading(true);
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const blob = await resp.blob();
+      const filename = url.split("/").pop() ?? title;
+      const file = new File([blob], filename, { type: blob.type });
+      const schemas = await loadFile(file);
+      setSchemas(schemas);
+      setDataReady(true);
+      setLoaded(true);
+      addToast({ variant: "success", title: `Loaded ${title}`, message: `${schemas.length} table(s) ready` });
+      setTimeout(() => { setLoaded(false); toggleDataSource(); }, 800);
+    } catch (e) {
+      addToast({ variant: "error", title: "Failed to load sample", message: String(e) });
+    } finally {
+      setLoading(false);
+      setLoadingSample(null);
+    }
+  };
+
   const TABS: { id: Tab; icon: React.ReactNode; label: string }[] = [
-    { id: "upload", icon: <Upload size={13} />, label: "Upload File" },
-    { id: "url", icon: <Link2 size={13} />, label: "From URL" },
-    { id: "paste", icon: <ClipboardPaste size={13} />, label: "Paste Data" },
+    { id: "upload", icon: <Upload size={13} />, label: "Upload" },
+    { id: "samples", icon: <Layers size={13} />, label: "Samples" },
+    { id: "url", icon: <Link2 size={13} />, label: "URL" },
+    { id: "paste", icon: <ClipboardPaste size={13} />, label: "Paste" },
   ];
 
   const FILE_TYPES = ["CSV", "TSV", "Excel", "JSON", "Parquet", "SQLite"];
@@ -100,7 +136,7 @@ export function DataSourceModal() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 16 }}
             transition={{ type: "spring", stiffness: 400, damping: 35 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md p-6"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg p-6"
             style={{
               background: "rgba(255,255,255,0.99)",
               borderRadius: 24,
@@ -233,6 +269,30 @@ export function DataSourceModal() {
                 <button onClick={handlePaste} disabled={!pasteText.trim() || loading} className="btn-primary w-full">
                   {loading ? "Parsing…" : "Load Data"}
                 </button>
+              </div>
+            )}
+
+            {/* Samples */}
+            {tab === "samples" && (
+              <div className="grid grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-0.5">
+                {SAMPLES.map((s) => {
+                  const isLoading = loadingSample === s.title;
+                  return (
+                    <button
+                      key={s.title}
+                      onClick={() => handleSample(s.url, s.title)}
+                      disabled={loading}
+                      className="text-left rounded-xl p-3 transition-all border hover:border-indigo-300 hover:shadow-sm disabled:opacity-50"
+                      style={{ borderColor: "var(--border)", background: "rgba(99,102,241,0.02)" }}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-semibold" style={{ color: "var(--text-1)" }}>{s.title}</span>
+                        {isLoading && <Loader2 size={10} className="animate-spin shrink-0" style={{ color: "var(--indigo)" }} />}
+                      </div>
+                      <p className="leading-snug" style={{ fontSize: 10, color: "var(--text-3)" }}>{s.body}</p>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </motion.div>

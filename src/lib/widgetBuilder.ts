@@ -46,8 +46,8 @@ export async function buildDashboard(
 Rules:
 - Use a 12-column grid (x+w ≤ 12). Keep y values compact (0–8 range).
 - KPI widgets: w=3, h=2. SQL returns ONE row with a "value" column; optionally "label", "delta" (%), "unit".
-- Chart widgets: w=6 or w=9, h=4. SQL returns rows. Set xKey and yKey (column names). chartType: bar|line|area|pie|donut|scatter.
-- Table widgets: w=6 or w=12, h=4. SQL returns up to 100 rows.
+- Chart widgets: w=6 or w=9, h=5. SQL returns rows. Set xKey and yKey (column names). chartType: bar|line|area|pie|donut|scatter.
+- Table widgets: w=6 or w=12, h=5. SQL returns up to 100 rows.
 - Insight widgets: w=4 or w=6, h=2. Fill "insight" with a concise text observation (no SQL).
 - Use DuckDB SQL syntax (window functions, CTEs, PIVOT all supported).
 - Generate 4–8 diverse widgets covering the prompt comprehensively.

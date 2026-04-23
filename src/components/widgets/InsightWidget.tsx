@@ -10,7 +10,7 @@ export function InsightWidget({ widget }: { widget: Widget }) {
       >
         <Lightbulb size={14} style={{ color: "#d97706" }} />
       </div>
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 overflow-y-auto">
         <p
           className="font-semibold uppercase tracking-widest mb-1.5"
           style={{ fontSize: 9, color: "#d97706", letterSpacing: "0.1em" }}

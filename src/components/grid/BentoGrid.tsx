@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const ReactGridLayout = require("react-grid-layout").default as React.ComponentType<Record<string, unknown>>;
 import type { Layout, LayoutItem } from "react-grid-layout";
@@ -10,6 +10,19 @@ import { Sparkles, Database } from "lucide-react";
 
 export function BentoGrid() {
   const { widgets, setWidgets, dataReady, isBuilding } = useDashboardStore();
+
+  // Track container width so the grid fills the panel correctly on any resize
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [gridWidth, setGridWidth] = useState(1200);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    setGridWidth(el.offsetWidth);
+    const ro = new ResizeObserver(([entry]) => setGridWidth(entry.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const layout: LayoutItem[] = widgets.map((w) => ({
     i: w.id, x: w.layout.x, y: w.layout.y, w: w.layout.w, h: w.layout.h,
@@ -37,17 +50,18 @@ export function BentoGrid() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 pt-2">
+    <div ref={containerRef} className="flex-1 overflow-y-auto px-4 pt-2">
       <ReactGridLayout
         className="layout"
         layout={layout as Layout}
         cols={12}
-        rowHeight={80}
-        width={window.innerWidth - 32}
+        rowHeight={100}
+        width={gridWidth}
         onLayoutChange={onLayoutChange}
         draggableHandle=".drag-handle"
         margin={[12, 12]}
         containerPadding={[0, 0]}
+        compactType="vertical"
         isResizable
         isDraggable
       >
@@ -67,22 +81,26 @@ function EmptyState({ type }: { type: "no-data" | "no-widgets" | "building" }) {
       <motion.div
         animate={{ y: [0, -8, 0] }}
         transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-        className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/[0.08] flex items-center justify-center"
+        className="w-20 h-20 rounded-2xl flex items-center justify-center"
+        style={{ background: "linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.08))", border: "1px solid rgba(99,102,241,0.15)" }}
       >
-        {type === "no-data" ? <Database size={32} className="text-blue-400/60" /> : <Sparkles size={32} className="text-purple-400/60" />}
+        {type === "no-data"
+          ? <Database size={32} style={{ color: "var(--indigo)" }} />
+          : <Sparkles size={32} style={{ color: "var(--violet)" }} />}
       </motion.div>
 
       {type === "no-data" && (
         <>
           <div>
-            <h2 className="text-xl font-semibold text-white/80 mb-2">Connect your data</h2>
-            <p className="text-sm text-white/35 max-w-sm leading-relaxed">
-              Upload a CSV, Excel, JSON, Parquet, or SQLite file — then describe the dashboard you want to build.
+            <h2 className="text-xl font-semibold mb-2" style={{ color: "var(--text-1)" }}>Connect your data</h2>
+            <p className="text-sm leading-relaxed max-w-sm" style={{ color: "var(--text-3)" }}>
+              Upload a CSV, Excel, JSON, Parquet, or SQLite file — or pick a sample dataset — then describe the dashboard you want.
             </p>
           </div>
           <div className="flex flex-wrap justify-center gap-2">
             {["CSV", "Excel", "JSON", "Parquet", "SQLite"].map((f) => (
-              <span key={f} className="text-[11px] px-2.5 py-1 rounded-full border border-white/[0.08] text-white/30">{f}</span>
+              <span key={f} className="text-[11px] px-2.5 py-1 rounded-full border font-medium"
+                style={{ borderColor: "var(--border)", color: "var(--text-3)" }}>{f}</span>
             ))}
           </div>
         </>
@@ -90,22 +108,22 @@ function EmptyState({ type }: { type: "no-data" | "no-widgets" | "building" }) {
 
       {type === "no-widgets" && (
         <div>
-          <h2 className="text-xl font-semibold text-white/80 mb-2">Data ready</h2>
-          <p className="text-sm text-white/35 max-w-sm leading-relaxed">
-            Describe the dashboard you want — the AI will generate KPIs, charts, and tables instantly.
+          <h2 className="text-xl font-semibold mb-2" style={{ color: "var(--text-1)" }}>Data ready</h2>
+          <p className="text-sm leading-relaxed max-w-sm" style={{ color: "var(--text-3)" }}>
+            Describe the dashboard you want — the AI will generate KPIs, charts, tables, and insights instantly.
           </p>
         </div>
       )}
 
       {type === "building" && (
         <div>
-          <h2 className="text-xl font-semibold text-white/80 mb-2">Building your dashboard…</h2>
-          <p className="text-sm text-white/35">Designing widgets and running queries</p>
+          <h2 className="text-xl font-semibold mb-2" style={{ color: "var(--text-1)" }}>Building your dashboard…</h2>
+          <p className="text-sm" style={{ color: "var(--text-3)" }}>Designing widgets and running queries</p>
           <div className="flex justify-center gap-1.5 mt-4">
             {[0, 1, 2, 3].map((i) => (
               <motion.div key={i} animate={{ opacity: [0.2, 1, 0.2] }}
                 transition={{ duration: 1.2, delay: i * 0.2, repeat: Infinity }}
-                className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--indigo)" }} />
             ))}
           </div>
         </div>

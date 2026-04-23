@@ -46,7 +46,7 @@ export function WidgetShell({ widget }: { widget: Widget }) {
       !widget.error &&
       widget.data &&
       widget.data.length > 0 &&
-      widget.type !== "insight" &&
+      (widget.type === "chart" || widget.type === "table") &&
       !widget.commentary &&
       !widget.commentaryLoading;
 
@@ -101,8 +101,10 @@ export function WidgetShell({ widget }: { widget: Widget }) {
     }
   };
 
+  // Commentary only makes sense for chart and table widgets
+  // KPI is self-explanatory; insight type IS the commentary
   const showCommentarySection =
-    widget.type !== "insight" &&
+    (widget.type === "chart" || widget.type === "table") &&
     !widget.loading &&
     !widget.error &&
     (widget.commentary || widget.commentaryLoading);
@@ -145,9 +147,8 @@ export function WidgetShell({ widget }: { widget: Widget }) {
       {/* Divider */}
       <div className="mx-4 mb-2 h-px" style={{ background: "var(--border)" }} />
 
-      {/* Main content */}
-      <div className={cn("px-4 pb-3", showCommentarySection ? "shrink-0" : "flex-1 min-h-0")}
-        style={showCommentarySection ? { height: "55%" } : undefined}>
+      {/* Main content — always flex-1, commentary is a fixed strip below */}
+      <div className="flex-1 min-h-0 px-4 pb-3 overflow-hidden">
         {widget.loading ? (
           <div className="h-full flex flex-col justify-center gap-2.5">
             <div className="shimmer h-8 w-3/4" />
@@ -170,33 +171,29 @@ export function WidgetShell({ widget }: { widget: Widget }) {
         )}
       </div>
 
-      {/* ── AI Commentary section ── */}
+      {/* ── AI Commentary — fixed-height strip at bottom, never shrinks chart ── */}
       {showCommentarySection && (
-        <div className="flex-1 min-h-0 flex flex-col border-t" style={{ borderColor: "var(--border)" }}>
-          {/* Commentary header */}
-          <div className="flex items-center gap-1.5 px-4 py-1.5 shrink-0">
-            <div className="flex items-center gap-1.5 flex-1 min-w-0">
-              <Sparkles size={10} style={{ color: "#d97706", flexShrink: 0 }} />
-              <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: "#d97706" }}>
-                AI Insight
-              </span>
-            </div>
-            <div className="flex items-center gap-0.5">
-              <button
-                onClick={handleRegenerateCommentary}
-                disabled={widget.commentaryLoading}
-                title="Regenerate"
-                className="w-5 h-5 rounded flex items-center justify-center text-gray-300 hover:text-amber-500 hover:bg-amber-50 transition-colors disabled:opacity-40"
-              >
-                <RefreshCw size={9} className={widget.commentaryLoading ? "animate-spin" : ""} />
-              </button>
-              <button
-                onClick={() => setCommentaryOpen((v) => !v)}
-                className="w-5 h-5 rounded flex items-center justify-center text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors"
-              >
-                {commentaryOpen ? <ChevronUp size={9} /> : <ChevronDown size={9} />}
-              </button>
-            </div>
+        <div className="shrink-0 border-t" style={{ borderColor: "var(--border)" }}>
+          {/* Header row */}
+          <div className="flex items-center gap-1.5 px-4 py-1.5">
+            <Sparkles size={10} style={{ color: "#d97706" }} />
+            <span className="text-[9px] font-bold uppercase tracking-widest flex-1" style={{ color: "#d97706" }}>
+              AI Insight
+            </span>
+            <button
+              onClick={handleRegenerateCommentary}
+              disabled={widget.commentaryLoading}
+              title="Regenerate"
+              className="w-5 h-5 rounded flex items-center justify-center text-gray-300 hover:text-amber-500 hover:bg-amber-50 transition-colors disabled:opacity-40"
+            >
+              <RefreshCw size={9} className={widget.commentaryLoading ? "animate-spin" : ""} />
+            </button>
+            <button
+              onClick={() => setCommentaryOpen((v) => !v)}
+              className="w-5 h-5 rounded flex items-center justify-center text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors"
+            >
+              {commentaryOpen ? <ChevronUp size={9} /> : <ChevronDown size={9} />}
+            </button>
           </div>
 
           <AnimatePresence initial={false}>
@@ -205,16 +202,15 @@ export function WidgetShell({ widget }: { widget: Widget }) {
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden flex flex-col"
+                transition={{ duration: 0.18 }}
               >
-                {/* Commentary text */}
-                <div className="px-4 pb-2 flex-1 min-h-0 overflow-y-auto">
+                {/* Commentary text — max 3 lines, scrollable */}
+                <div className="px-4 pb-1.5 max-h-16 overflow-y-auto">
                   {widget.commentaryLoading ? (
-                    <div className="flex flex-col gap-1.5 pt-0.5">
-                      <div className="shimmer h-3 w-full rounded" />
-                      <div className="shimmer h-3 w-5/6 rounded" />
-                      <div className="shimmer h-3 w-4/5 rounded" />
+                    <div className="flex flex-col gap-1.5">
+                      <div className="shimmer h-2.5 w-full rounded" />
+                      <div className="shimmer h-2.5 w-5/6 rounded" />
+                      <div className="shimmer h-2.5 w-4/5 rounded" />
                     </div>
                   ) : (
                     <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-2)" }}>
@@ -224,9 +220,9 @@ export function WidgetShell({ widget }: { widget: Widget }) {
                 </div>
 
                 {/* Refine input */}
-                <div className="px-3 pb-3 pt-1 shrink-0">
-                  <div className="flex gap-1.5 items-center rounded-xl border px-2.5 py-1.5 bg-amber-50/40 transition-colors focus-within:border-amber-300"
-                    style={{ borderColor: "rgba(245,158,11,0.2)" }}>
+                <div className="px-3 pb-2.5">
+                  <div className="flex gap-1.5 items-center rounded-lg border px-2.5 py-1 transition-colors focus-within:border-amber-300"
+                    style={{ borderColor: "rgba(245,158,11,0.22)", background: "rgba(245,158,11,0.03)" }}>
                     <input
                       ref={commentaryInputRef}
                       value={commentaryInput}
@@ -234,7 +230,7 @@ export function WidgetShell({ widget }: { widget: Widget }) {
                       onKeyDown={(e) => { if (e.key === "Enter") handleCommentaryRefine(); }}
                       placeholder="Refine this insight…"
                       disabled={commentaryRefining || widget.commentaryLoading}
-                      className="flex-1 bg-transparent text-[11px] focus:outline-none placeholder:text-gray-300"
+                      className="flex-1 bg-transparent text-[11px] focus:outline-none"
                       style={{ color: "var(--text-1)" }}
                     />
                     <button
