@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, RefreshCw, MessageSquarePlus, Loader2, AlertTriangle, BarChart2, Hash, Table2, Lightbulb } from "lucide-react";
+import { X, RefreshCw, MessageSquarePlus, Loader2, AlertTriangle, BarChart2, Hash, Table2, Lightbulb, Sparkles, ChevronDown, ChevronUp, Send } from "lucide-react";
 import { useDashboardStore } from "@/store/useDashboardStore";
-import { refineWidget } from "@/lib/widgetBuilder";
+import { refineWidget, generateWidgetCommentary } from "@/lib/widgetBuilder";
 import { KPIWidget } from "@/components/widgets/KPIWidget";
 import { ChartWidget } from "@/components/widgets/ChartWidget";
 import { TableWidget } from "@/components/widgets/TableWidget";
@@ -20,10 +20,43 @@ const TYPE_META = {
 export function WidgetShell({ widget }: { widget: Widget }) {
   const { removeWidget, updateWidget, schemas, llmSettings, addToast } = useDashboardStore();
   const [hovered, setHovered] = useState(false);
+
+  // Widget refinement (chart type, SQL, etc.)
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [refining, setRefining] = useState(false);
+
+  // AI commentary
+  const [commentaryOpen, setCommentaryOpen] = useState(true);
+  const [commentaryInput, setCommentaryInput] = useState("");
+  const [commentaryRefining, setCommentaryRefining] = useState(false);
+  const commentaryInputRef = useRef<HTMLInputElement>(null);
+
   const meta = TYPE_META[widget.type];
+
+  // Auto-generate commentary when data first arrives (non-insight widgets)
+  const prevLoadingRef = useRef(widget.loading);
+  useEffect(() => {
+    const wasLoading = prevLoadingRef.current;
+    prevLoadingRef.current = widget.loading;
+
+    const shouldGenerate =
+      wasLoading &&
+      !widget.loading &&
+      !widget.error &&
+      widget.data &&
+      widget.data.length > 0 &&
+      widget.type !== "insight" &&
+      !widget.commentary &&
+      !widget.commentaryLoading;
+
+    if (!shouldGenerate) return;
+
+    updateWidget(widget.id, { commentaryLoading: true });
+    generateWidgetCommentary(widget, widget.data!, llmSettings)
+      .then((text) => updateWidget(widget.id, { commentary: text, commentaryLoading: false }))
+      .catch(() => updateWidget(widget.id, { commentaryLoading: false }));
+  }, [widget.loading]);                                       // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRefine = async () => {
     if (!chatInput.trim() || refining) return;
@@ -40,6 +73,40 @@ export function WidgetShell({ widget }: { widget: Widget }) {
     }
   };
 
+  const handleCommentaryRefine = async () => {
+    if (!commentaryInput.trim() || commentaryRefining) return;
+    if (!widget.data?.length) return;
+    setCommentaryRefining(true);
+    try {
+      // Pass the user instruction as context so the LLM refines the existing commentary
+      const enriched = { ...widget, title: `${widget.title} — instruction: ${commentaryInput}` };
+      const text = await generateWidgetCommentary(enriched, widget.data, llmSettings);
+      updateWidget(widget.id, { commentary: text });
+      setCommentaryInput("");
+    } catch (e) {
+      addToast({ variant: "error", title: "Commentary update failed", message: String(e) });
+    } finally {
+      setCommentaryRefining(false);
+    }
+  };
+
+  const handleRegenerateCommentary = async () => {
+    if (!widget.data?.length || widget.commentaryLoading) return;
+    updateWidget(widget.id, { commentaryLoading: true });
+    try {
+      const text = await generateWidgetCommentary(widget, widget.data, llmSettings);
+      updateWidget(widget.id, { commentary: text, commentaryLoading: false });
+    } catch {
+      updateWidget(widget.id, { commentaryLoading: false });
+    }
+  };
+
+  const showCommentarySection =
+    widget.type !== "insight" &&
+    !widget.loading &&
+    !widget.error &&
+    (widget.commentary || widget.commentaryLoading);
+
   return (
     <motion.div
       layout
@@ -53,7 +120,6 @@ export function WidgetShell({ widget }: { widget: Widget }) {
     >
       {/* Header */}
       <div className="flex items-center gap-2 px-4 pt-3.5 pb-2.5 shrink-0">
-        {/* Type badge */}
         <span className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
           style={{ background: meta.color, color: meta.text }}>
           {meta.icon}
@@ -61,12 +127,11 @@ export function WidgetShell({ widget }: { widget: Widget }) {
         </span>
         <p className="text-xs font-semibold text-gray-700 flex-1 truncate">{widget.title}</p>
 
-        {/* Controls */}
         <AnimatePresence>
           {hovered && (
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
               className="flex items-center gap-0.5">
-              <ToolBtn onClick={() => setChatOpen((v) => !v)} title="Refine with AI" active={chatOpen}>
+              <ToolBtn onClick={() => setChatOpen((v) => !v)} title="Refine widget with AI" active={chatOpen}>
                 <MessageSquarePlus size={11} />
               </ToolBtn>
               <ToolBtn onClick={() => removeWidget(widget.id)} title="Remove" danger>
@@ -80,8 +145,9 @@ export function WidgetShell({ widget }: { widget: Widget }) {
       {/* Divider */}
       <div className="mx-4 mb-2 h-px" style={{ background: "var(--border)" }} />
 
-      {/* Content */}
-      <div className="flex-1 min-h-0 px-4 pb-3">
+      {/* Main content */}
+      <div className={cn("px-4 pb-3", showCommentarySection ? "shrink-0" : "flex-1 min-h-0")}
+        style={showCommentarySection ? { height: "55%" } : undefined}>
         {widget.loading ? (
           <div className="h-full flex flex-col justify-center gap-2.5">
             <div className="shimmer h-8 w-3/4" />
@@ -104,11 +170,93 @@ export function WidgetShell({ widget }: { widget: Widget }) {
         )}
       </div>
 
-      {/* AI Refine Drawer */}
+      {/* ── AI Commentary section ── */}
+      {showCommentarySection && (
+        <div className="flex-1 min-h-0 flex flex-col border-t" style={{ borderColor: "var(--border)" }}>
+          {/* Commentary header */}
+          <div className="flex items-center gap-1.5 px-4 py-1.5 shrink-0">
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+              <Sparkles size={10} style={{ color: "#d97706", flexShrink: 0 }} />
+              <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: "#d97706" }}>
+                AI Insight
+              </span>
+            </div>
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={handleRegenerateCommentary}
+                disabled={widget.commentaryLoading}
+                title="Regenerate"
+                className="w-5 h-5 rounded flex items-center justify-center text-gray-300 hover:text-amber-500 hover:bg-amber-50 transition-colors disabled:opacity-40"
+              >
+                <RefreshCw size={9} className={widget.commentaryLoading ? "animate-spin" : ""} />
+              </button>
+              <button
+                onClick={() => setCommentaryOpen((v) => !v)}
+                className="w-5 h-5 rounded flex items-center justify-center text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors"
+              >
+                {commentaryOpen ? <ChevronUp size={9} /> : <ChevronDown size={9} />}
+              </button>
+            </div>
+          </div>
+
+          <AnimatePresence initial={false}>
+            {commentaryOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden flex flex-col"
+              >
+                {/* Commentary text */}
+                <div className="px-4 pb-2 flex-1 min-h-0 overflow-y-auto">
+                  {widget.commentaryLoading ? (
+                    <div className="flex flex-col gap-1.5 pt-0.5">
+                      <div className="shimmer h-3 w-full rounded" />
+                      <div className="shimmer h-3 w-5/6 rounded" />
+                      <div className="shimmer h-3 w-4/5 rounded" />
+                    </div>
+                  ) : (
+                    <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-2)" }}>
+                      {widget.commentary}
+                    </p>
+                  )}
+                </div>
+
+                {/* Refine input */}
+                <div className="px-3 pb-3 pt-1 shrink-0">
+                  <div className="flex gap-1.5 items-center rounded-xl border px-2.5 py-1.5 bg-amber-50/40 transition-colors focus-within:border-amber-300"
+                    style={{ borderColor: "rgba(245,158,11,0.2)" }}>
+                    <input
+                      ref={commentaryInputRef}
+                      value={commentaryInput}
+                      onChange={(e) => setCommentaryInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleCommentaryRefine(); }}
+                      placeholder="Refine this insight…"
+                      disabled={commentaryRefining || widget.commentaryLoading}
+                      className="flex-1 bg-transparent text-[11px] focus:outline-none placeholder:text-gray-300"
+                      style={{ color: "var(--text-1)" }}
+                    />
+                    <button
+                      onClick={handleCommentaryRefine}
+                      disabled={!commentaryInput.trim() || commentaryRefining || widget.commentaryLoading}
+                      className="w-5 h-5 flex items-center justify-center text-amber-400 hover:text-amber-600 disabled:opacity-30 transition-colors"
+                    >
+                      {commentaryRefining ? <Loader2 size={10} className="animate-spin" /> : <Send size={10} />}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+
+      {/* Widget AI Refine Drawer */}
       <AnimatePresence>
         {chatOpen && (
           <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }}
-            className="overflow-hidden border-t" style={{ borderColor: "var(--border)" }}>
+            className="overflow-hidden border-t shrink-0" style={{ borderColor: "var(--border)" }}>
             <div className="p-3 flex gap-2 bg-gray-50/60">
               <input
                 value={chatInput}

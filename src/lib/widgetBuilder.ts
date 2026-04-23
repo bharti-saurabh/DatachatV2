@@ -98,6 +98,25 @@ export async function executeWidget(widget: Widget): Promise<Widget> {
   }
 }
 
+export async function generateWidgetCommentary(
+  widget: Widget,
+  data: QueryRow[],
+  settings: LLMSettings,
+): Promise<string> {
+  const sample = JSON.stringify(data.slice(0, 12), null, 2);
+  const system = `You are a sharp business analyst writing commentary for an executive dashboard.
+Write 2–3 concise sentences that surface the single most important insight from this widget's data.
+Be specific: use actual numbers, percentages, or comparisons from the data.
+Write for a non-technical business reader. No bullet points, no markdown — plain prose only.`;
+
+  const user = `Widget title: "${widget.title}"
+Widget type: ${widget.type}${widget.chartType ? ` (${widget.chartType} chart)` : ""}
+Data (${data.length} rows total, first 12 shown):
+${sample}`;
+
+  return await callLLM({ system, user, settings });
+}
+
 export async function refineWidget(
   widget: Widget,
   prompt: string,

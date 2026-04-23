@@ -20,6 +20,8 @@ export interface Widget {
   data?: QueryRow[];
   loading?: boolean;
   error?: string;
+  commentary?: string;
+  commentaryLoading?: boolean;
 }
 
 // ── Data ─────────────────────────────────────────────────────────────────────
